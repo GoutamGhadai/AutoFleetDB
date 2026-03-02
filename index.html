@@ -76,7 +76,6 @@ const offsets = [
 for (let i = 0; i < offsets.length; i++) {
   resultString += String.fromCharCode(num + offsets[i]);
 }
-
 const firebaseConfig = {
     apiKey: resultString,
     authDomain: "autofleet-d7dfd.firebaseapp.com",
@@ -216,6 +215,33 @@ const isExpired = (dateString) => {
 };
 
 const generateId = () => Math.random().toString(36).substr(2, 9);
+
+// --- Simple Encryption Utility ---
+const SECRET_KEY = "AF_SEC_99";
+const Cipher = {
+  encode: (text) => {
+    if (!text) return '';
+    const encoded = encodeURIComponent(text);
+    let result = '';
+    for (let i = 0; i < encoded.length; i++) {
+      result += String.fromCharCode(encoded.charCodeAt(i) ^ SECRET_KEY.charCodeAt(i % SECRET_KEY.length));
+    }
+    return btoa(result);
+  },
+  decode: (text) => {
+    if (!text) return '';
+    try {
+      const decodedBase64 = atob(text);
+      let result = '';
+      for (let i = 0; i < decodedBase64.length; i++) {
+        result += String.fromCharCode(decodedBase64.charCodeAt(i) ^ SECRET_KEY.charCodeAt(i % SECRET_KEY.length));
+      }
+      return decodeURIComponent(result);
+    } catch (e) {
+      return text; // Fallback for existing plain text passwords
+    }
+  }
+};
 
 // --- Initial Data Setup ---
 const initialVehicles = [];
@@ -3847,7 +3873,8 @@ function LoginScreen({ setAppUser, showToast, firebaseUser, theme, setTheme }) {
          let matchedUser = null;
          snap.forEach(d => {
             const data = d.data();
-            if (data.username === username && data.password === password) {
+            const dbPassword = Cipher.decode(data.password || '');
+            if (data.username === username && dbPassword === password) {
                matchedUser = { id: d.id, ...data };
             }
          });
@@ -4101,7 +4128,10 @@ function AdminConsole({ appUser, handleLogout, showToast, firebaseUser }) {
     const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'appUsers');
     const unsub = onSnapshot(colRef, snap => {
       const arr = [];
-      snap.forEach(d => arr.push({id: d.id, ...d.data()}));
+      snap.forEach(d => {
+         const data = d.data();
+         arr.push({id: d.id, ...data, password: Cipher.decode(data.password || '')});
+      });
       setUsers(arr);
     });
     return () => unsub();
@@ -4114,7 +4144,7 @@ function AdminConsole({ appUser, handleLogout, showToast, firebaseUser }) {
     try {
        if (editingId) {
            const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'appUsers', editingId);
-           await updateDoc(docRef, { username: newUsername, password: newPassword, role: newRole, dob: newDob });
+           await updateDoc(docRef, { username: newUsername, password: Cipher.encode(newPassword), role: newRole, dob: newDob });
            showToast('Operator updated successfully');
            setEditingId(null);
        } else {
@@ -4123,7 +4153,7 @@ function AdminConsole({ appUser, handleLogout, showToast, firebaseUser }) {
            const uniqueUserId = `${newUsername}_${newDob}`.trim().toLowerCase().replace(/[^a-z0-9]/g, '_');
            const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'appUsers', uniqueUserId);
            
-           await setDoc(docRef, { username: newUsername, password: newPassword, role: newRole, dob: newDob });
+           await setDoc(docRef, { username: newUsername, password: Cipher.encode(newPassword), role: newRole, dob: newDob });
            showToast('User provisioned successfully');
        }
        setNewUsername(''); setNewPassword(''); setNewDob(''); setNewRole('user');
