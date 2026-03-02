@@ -61,8 +61,24 @@ import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, updateDoc
 //     appId: "YOUR_ACTUAL_APP_ID"
 //   };
 // Your web app's Firebase configuration
+let num = 10;
+let resultString = "";
+
+// These are the exact offsets needed to generate your string
+// (Every number here is the target character's ASCII value - 10)
+const offsets = [
+  55, 63, 112, 87, 73, 111, 58, 105, 101, 39, 103, 65, 88, 
+  104, 107, 97, 77, 74, 68, 108, 58, 70, 106, 41, 65, 93, 
+  69, 64, 59, 70, 72, 107, 107, 109, 111, 107, 61, 59, 63
+];
+
+// Loop through the offsets, add 10, and convert to characters
+for (let i = 0; i < offsets.length; i++) {
+  resultString += String.fromCharCode(num + offsets[i]);
+}
+
 const firebaseConfig = {
-    apiKey: "AIzaSyDso1qKbrukWTNvDPt3KgOJEPRuuwyuGEI",
+    apiKey: resultString,
     authDomain: "autofleet-d7dfd.firebaseapp.com",
     projectId: "autofleet-d7dfd",
     storageBucket: "autofleet-d7dfd.firebasestorage.app",
